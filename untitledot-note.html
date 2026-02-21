@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Voice OT Note</title>
+
+<style>
+body{
+  font-family:Arial;
+  margin:0;
+  padding:20px;
+  background:#f5f5f5;
+}
+
+.container{
+  max-width:600px;
+  margin:auto;
+}
+
+button{
+  width:100%;
+  padding:18px;
+  font-size:22px;
+  border:none;
+  border-radius:10px;
+  background:#007bff;
+  color:white;
+}
+
+#status{
+  margin-top:10px;
+  font-weight:bold;
+}
+
+#output{
+  margin-top:15px;
+  background:white;
+  padding:15px;
+  border-radius:10px;
+  white-space:pre-wrap;
+  min-height:200px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<h2>🎤 Voice Operative Note</h2>
+
+<button onclick="startListening()">Start Dictation</button>
+
+<div id="status">Status: Idle</div>
+
+<div id="output">Operative note will appear here...</div>
+
+</div>
+
+<script>
+
+/* ============================
+   🔑 PUT YOUR API KEY HERE
+============================ */
+const OPENAI_API_KEY = "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";
+
+/* ============================
+   VOICE RECOGNITION
+============================ */
+
+let recognition;
+
+function startListening(){
+
+  if (!('webkitSpeechRecognition' in window)) {
+    alert("Speech recognition not supported. Use Chrome browser.");
+    return;
+  }
+
+  recognition = new webkitSpeechRecognition();
+  recognition.lang = "en-US";
+  recognition.maxAlternatives = 1;
+  recognition.continuous = false;
+  document.getElementById("status").innerText = "Status: Listening...";
+
+  recognition.start();
+
+  recognition.onresult = function(event){
+    const text = event.results[0][0].transcript;
+    document.getElementById("status").innerText =
+      "Status: Processing...";
+
+    generateOTNote(text);
+  };
+
+  recognition.onend = function(){
+    document.getElementById("status").innerText =
+      "Status: Finished listening";
+  };
+}
+
+/* ============================
+   CHATGPT API CALL
+============================ */
+
+async function generateOTNote(dictation){
+
+const prompt = `
+You are an anorectal surgical operative note assistant.
+
+Convert keyword dictation into a medico-legally safe operative note.
+
+Rules:
+- Expand keywords into professional medical sentences.
+- Slightly detailed consultant-level style.
+- Focus only on clinical surgical steps.
+- Do NOT invent findings.
+- Detect procedure automatically.
+
+Use headings:
+Diagnosis
+Anaesthesia
+Operative Findings
+Procedure Performed
+Hemostasis and Blood Loss
+Complications
+Post Operative Advice
+
+Keyword Dictation:
+${dictation}
+`;
+
+try{
+
+const res = await fetch("https://api.openai.com/v1/chat/completions",{
+  method:"POST",
+  headers:{
+    "Content-Type":"application/json",
+    "Authorization":"Bearer " + OPENAI_API_KEY
+  },
+  body:JSON.stringify({
+    model:"gpt-4o-mini",
+    messages:[{role:"user", content:prompt}]
+  })
+});
+
+const data = await res.json();
+
+const note =
+  data.choices[0].message.content;
+
+document.getElementById("output").innerText = note;
+
+navigator.clipboard.writeText(note);
+
+document.getElementById("status").innerText =
+  "✅ Note generated & copied";
+
+}catch(err){
+  document.getElementById("status").innerText =
+    "Error generating note";
+  console.log(err);
+}
+
+}
+
+</script>
+
+</body>
+</html>ot-note.html
