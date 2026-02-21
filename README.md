@@ -1,2 +1,2 @@
-# ot-note.html-index.html
+index.html
 ot notes
